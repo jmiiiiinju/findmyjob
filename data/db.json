@@ -1,0 +1,75 @@
+{
+  "profile": {
+    "name": "대학생",
+    "grade": "3학년",
+    "major": "경영학과",
+    "mbti": "ENFP",
+    "targetField": "프로덕트 매니저 (PM) 및 데이터 분석",
+    "interests": [
+      "프로덕트 매니저 (PM)",
+      "데이터 분석가 (DA)",
+      "IT 기획"
+    ],
+    "currentConcerns": "전공과 다른 IT 직무로 취업하고 싶은데 학점과 스펙 준비 순서가 고민입니다."
+  },
+  "chatMessages": [
+    {
+      "id": "welcome",
+      "role": "assistant",
+      "content": "안녕하세요! 대학생을 위한 AI 진로 멘토링 **PathFinder**에 오신 것을 환영해요. 🌱\n\n백엔드 서버와 연동되어 대화 내역, 프로필, 북마크, 로드맵이 안전하게 영구 저장됩니다.\n진로 고민이나 희망 직무에 대해 편하게 질문해 주세요!",
+      "timestamp": "09:00",
+      "mentorPersona": "general"
+    }
+  ],
+  "bookmarkedIds": [
+    "job-1",
+    "bootcamp-1"
+  ],
+  "notifications": [
+    {
+      "id": "noti-1",
+      "itemId": "job-5",
+      "title": "한국전력공사 2026 청년인턴 마감 임박",
+      "message": "한국전력공사 청년인턴 서류 접수가 9일 남았습니다 (2026-10-15 마감).",
+      "type": "deadline",
+      "timestamp": "오늘 09:30",
+      "isRead": false
+    },
+    {
+      "id": "noti-2",
+      "itemId": "job-1",
+      "title": "NAVER 테크 인턴십 신규 모집 시작",
+      "message": "네이버 2026 채용연계형 테크 인턴십(SW/데이터/AI)이 오픈되었습니다. 전공 무관 지원 가능!",
+      "type": "new_match",
+      "timestamp": "어제 14:15",
+      "isRead": false
+    },
+    {
+      "id": "noti-3",
+      "itemId": "bootcamp-1",
+      "title": "삼성 청년 SW 아카데미 (SSAFY) 13기 모집 중",
+      "message": "월 100만원 교육지원금 지급! 비전공자 전용 트랙이 개설되어 있습니다.",
+      "type": "new_match",
+      "timestamp": "2일 전",
+      "isRead": true
+    }
+  ],
+  "notificationSettings": {
+    "enabled": true,
+    "categories": {
+      "job": true,
+      "grad": true,
+      "bootcamp": true
+    },
+    "keywords": [
+      "네이버",
+      "PM",
+      "AI대학원",
+      "SSAFY"
+    ],
+    "notifyOnDeadline3Days": true
+  },
+  "savedRoadmaps": [],
+  "savedRecommendations": [],
+  "updatedAt": "2026-10-06T13:04:58.188Z"
+}

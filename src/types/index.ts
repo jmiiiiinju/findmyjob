@@ -117,6 +117,8 @@ export interface CareerRoadmapStage {
 }
 
 export interface CareerRoadmap {
+  id?: string;
+  savedAt?: string;
   roadmapTitle: string;
   targetJob: string;
   executiveSummary: string;

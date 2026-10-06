@@ -6,12 +6,16 @@ import { POPULAR_KEYWORDS } from '../data/curationData';
 interface RoadmapViewProps {
   profile: StudentProfile;
   initialTargetJob?: string;
+  savedRoadmaps?: CareerRoadmap[];
+  onDeleteRoadmap?: (id: string) => Promise<void>;
   onNavigateToChatWithPrompt: (prompt: string) => void;
 }
 
 export const RoadmapView: React.FC<RoadmapViewProps> = ({
   profile,
   initialTargetJob,
+  savedRoadmaps = [],
+  onDeleteRoadmap,
   onNavigateToChatWithPrompt,
 }) => {
   const [targetJob, setTargetJob] = useState(initialTargetJob || profile.targetField || '프로덕트 매니저 (PM)');
@@ -103,6 +107,54 @@ ${s.proTip ? `- 멘토 팁: ${s.proTip}` : ''}`
         <p className="text-xs sm:text-sm text-slate-500 mt-1">
           현재 학년과 전공에서 시작해 최종 합격까지 필요한 핵심 역량과 스펙을 체계적으로 설계합니다.
         </p>
+
+        {/* Server Saved Roadmaps Quick Select */}
+        {savedRoadmaps && savedRoadmaps.length > 0 && (
+          <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-2">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>서버에 저장된 로드맵 ({savedRoadmaps.length}개)</span>
+              </span>
+              <span className="text-[11px] font-normal text-slate-400">클릭하여 불러오기</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {savedRoadmaps.map((s, idx) => (
+                <div
+                  key={s.id || idx}
+                  className="flex items-center bg-white border border-slate-200 rounded-lg text-xs overflow-hidden shadow-2xs hover:border-indigo-400 transition-colors"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRoadmap(s);
+                      setTargetJob(s.targetJob);
+                      setCompletedActions([]);
+                    }}
+                    className="px-2.5 py-1.5 text-left text-slate-800 font-medium hover:text-indigo-600 truncate max-w-[200px]"
+                  >
+                    {s.targetJob}
+                  </button>
+                  {onDeleteRoadmap && s.id && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`'${s.targetJob}' 로드맵을 삭제하시겠습니까?`)) {
+                          onDeleteRoadmap(s.id!);
+                        }
+                      }}
+                      className="px-2 py-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border-l border-slate-100"
+                      title="삭제"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleGenerateRoadmap} className="mt-5 space-y-4 pt-4 border-t border-slate-100">

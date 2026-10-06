@@ -3,6 +3,19 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
+import {
+  getDatabase,
+  updateProfile,
+  addChatMessage,
+  clearChat,
+  toggleBookmark,
+  updateNotificationSettings,
+  markAllNotificationsRead,
+  clearNotifications,
+  saveRoadmap,
+  deleteRoadmap,
+  saveRecommendation,
+} from './server/storage.ts';
 
 dotenv.config();
 
@@ -55,7 +68,118 @@ const PERSONA_PROMPTS: Record<string, string> = {
 - 장기적인 커리어 로드맵과 전문성 심화 경로를 차분하고 논리적으로 설명합니다.`
 };
 
-// 1. Streaming Chat Endpoint
+// ==========================================
+// 1. Data Persistence Endpoints (Backend Server)
+// ==========================================
+
+// Get all persisted database state
+app.get('/api/data', async (_req: Request, res: Response) => {
+  try {
+    const data = await getDatabase();
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '데이터 조회 실패' });
+  }
+});
+
+// Update Student Profile
+app.post('/api/profile', async (req: Request, res: Response) => {
+  try {
+    const updated = await updateProfile(req.body);
+    res.json({ success: true, profile: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '프로필 저장 실패' });
+  }
+});
+
+// Toggle Curation Bookmark
+app.post('/api/bookmarks/toggle', async (req: Request, res: Response) => {
+  try {
+    const { itemId } = req.body;
+    if (!itemId) {
+      res.status(400).json({ error: 'itemId가 필요합니다.' });
+      return;
+    }
+    const bookmarkedIds = await toggleBookmark(itemId);
+    res.json({ success: true, bookmarkedIds });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '북마크 업데이트 실패' });
+  }
+});
+
+// Clear Chat Messages
+app.post('/api/chat/clear', async (_req: Request, res: Response) => {
+  try {
+    const messages = await clearChat();
+    res.json({ success: true, chatMessages: messages });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '대화 초기화 실패' });
+  }
+});
+
+// Update Notification Settings
+app.post('/api/notifications/settings', async (req: Request, res: Response) => {
+  try {
+    const settings = await updateNotificationSettings(req.body);
+    res.json({ success: true, notificationSettings: settings });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '알림 설정 저장 실패' });
+  }
+});
+
+// Mark All Notifications Read
+app.post('/api/notifications/read-all', async (_req: Request, res: Response) => {
+  try {
+    const notifications = await markAllNotificationsRead();
+    res.json({ success: true, notifications });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '알림 읽음 처리 실패' });
+  }
+});
+
+// Clear Notifications
+app.post('/api/notifications/clear', async (_req: Request, res: Response) => {
+  try {
+    const notifications = await clearNotifications();
+    res.json({ success: true, notifications });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '알림 삭제 실패' });
+  }
+});
+
+// Save Roadmap
+app.post('/api/roadmaps', async (req: Request, res: Response) => {
+  try {
+    const saved = await saveRoadmap(req.body);
+    res.json({ success: true, savedRoadmaps: saved });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '로드맵 저장 실패' });
+  }
+});
+
+// Delete Roadmap
+app.delete('/api/roadmaps/:id', async (req: Request, res: Response) => {
+  try {
+    const saved = await deleteRoadmap(req.params.id);
+    res.json({ success: true, savedRoadmaps: saved });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '로드맵 삭제 실패' });
+  }
+});
+
+// Save Recommendation
+app.post('/api/recommendations/save', async (req: Request, res: Response) => {
+  try {
+    const saved = await saveRecommendation(req.body);
+    res.json({ success: true, savedRecommendations: saved });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || '추천 결과 저장 실패' });
+  }
+});
+
+// ==========================================
+// 2. Streaming Chat Endpoint (with auto-persistence)
+// ==========================================
 app.post('/api/chat/stream', async (req: Request, res: Response) => {
   try {
     const { messages, studentProfile, mentorPersona = 'general' } = req.body;
@@ -63,6 +187,17 @@ app.post('/api/chat/stream', async (req: Request, res: Response) => {
     if (!Array.isArray(messages) || messages.length === 0) {
       res.status(400).json({ error: '대화 내용(messages)이 올바르지 않습니다.' });
       return;
+    }
+
+    const lastUserMessage = messages[messages.length - 1];
+    // Persist user message to backend store
+    if (lastUserMessage && lastUserMessage.role === 'user') {
+      await addChatMessage({
+        id: lastUserMessage.id || `user-${Date.now()}`,
+        role: 'user',
+        content: lastUserMessage.content,
+        timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+      });
     }
 
     const personaPrompt = PERSONA_PROMPTS[mentorPersona] || PERSONA_PROMPTS.general;
@@ -110,11 +245,25 @@ ${profileContext}
       },
     });
 
+    let fullAssistantResponse = '';
+
     for await (const chunk of responseStream) {
       const text = chunk.text;
       if (text) {
+        fullAssistantResponse += text;
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
+    }
+
+    // Persist assistant response to backend store
+    if (fullAssistantResponse) {
+      await addChatMessage({
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: fullAssistantResponse,
+        timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+        mentorPersona,
+      });
     }
 
     res.write('data: [DONE]\n\n');
@@ -130,7 +279,9 @@ ${profileContext}
   }
 });
 
-// 2. AI-Powered Career Recommendation System (MBTI + Interests + Target Keywords)
+// ==========================================
+// 3. AI-Powered Career Recommendation System (MBTI + Keywords)
+// ==========================================
 app.post('/api/career/recommend-mbti', async (req: Request, res: Response) => {
   try {
     const { mbti, major, targetKeywords, interests, grade } = req.body;
@@ -245,6 +396,9 @@ app.post('/api/career/recommend-mbti', async (req: Request, res: Response) => {
     });
 
     const parsed = JSON.parse(response.text || '{}');
+    // Automatically persist to backend recommendation history
+    await saveRecommendation(parsed);
+
     res.json(parsed);
   } catch (error: any) {
     console.error('[API /api/career/recommend-mbti Error]:', error);
@@ -252,7 +406,9 @@ app.post('/api/career/recommend-mbti', async (req: Request, res: Response) => {
   }
 });
 
-// 3. Structured Career Roadmap Generator
+// ==========================================
+// 4. Structured Career Roadmap Generator
+// ==========================================
 app.post('/api/career/roadmap', async (req: Request, res: Response) => {
   try {
     const { targetJob, currentGrade, major, currentStatus } = req.body;
@@ -313,6 +469,9 @@ app.post('/api/career/roadmap', async (req: Request, res: Response) => {
     });
 
     const parsed = JSON.parse(response.text || '{}');
+    // Save to backend database
+    await saveRoadmap(parsed);
+
     res.json(parsed);
   } catch (error: any) {
     console.error('[API /api/career/roadmap Error]:', error);
@@ -320,7 +479,9 @@ app.post('/api/career/roadmap', async (req: Request, res: Response) => {
   }
 });
 
-// 4. Curation AI Insights & Fit Check
+// ==========================================
+// 5. Curation AI Insights & Fit Check
+// ==========================================
 app.post('/api/curation/analyze-fit', async (req: Request, res: Response) => {
   try {
     const { item, userProfile } = req.body;
@@ -385,7 +546,7 @@ MBTI: ${userProfile?.mbti || '미입력'}
 
 // Health check
 app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'PathFinder AI Career Mentoring' });
+  res.json({ status: 'ok', service: 'PathFinder AI Career Mentoring with Backend Persistence' });
 });
 
 // Development vs Production serving

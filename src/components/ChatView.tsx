@@ -6,6 +6,9 @@ import { MENTOR_PERSONAS, QUICK_PROMPTS } from '../data/mentorPersonas';
 
 interface ChatViewProps {
   profile: StudentProfile;
+  messages: ChatMessage[];
+  setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  onClearChatBackend: () => Promise<void>;
   onOpenProfile: () => void;
   onNavigateTab: (tab: 'chat' | 'recommend' | 'curation' | 'roadmap', params?: any) => void;
   externalPrefillPrompt?: string;
@@ -14,6 +17,9 @@ interface ChatViewProps {
 
 export const ChatView: React.FC<ChatViewProps> = ({
   profile,
+  messages,
+  setMessages,
+  onClearChatBackend,
   onOpenProfile,
   onNavigateTab,
   externalPrefillPrompt,
@@ -23,29 +29,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const initialWelcome = `안녕하세요! 대학생을 위한 AI 진로 멘토링 **PathFinder**에 오신 것을 환영해요. 🌱
-
-${
-  profile.major
-    ? `현재 **${profile.major}** (${profile.grade || '재학생'}, MBTI: ${profile.mbti || '미정'}) 맞춤 모드로 세팅되어 있어요.`
-    : '상단 우측 프로필에서 전공과 학년, MBTI를 설정하시면 더욱 정밀한 맞춤 조언을 받으실 수 있어요.'
-}
-
-진로가 막연하거나, 전공과 맞지 않는 것 같아 고민이신가요? 
-혹은 구체적인 직무(개발, PM, 마케팅, 대학원, 공기업 등) 준비 로드맵이나 이번 방학 스펙 준비 순서가 궁금하신가요?
-
-편하게 무엇이든 질문해 주세요!`;
-
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: initialWelcome,
-      timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-      mentorPersona: 'general',
-    },
-  ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -178,17 +161,9 @@ ${
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleResetChat = () => {
-    if (confirm('대화 내용을 초기화하시겠습니까?')) {
-      setMessages([
-        {
-          id: 'welcome-reset',
-          role: 'assistant',
-          content: '대화가 초기화되었습니다. 새로운 진로 고민이나 질문을 편하게 남겨주세요!',
-          timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-          mentorPersona: selectedPersona,
-        },
-      ]);
+  const handleResetChat = async () => {
+    if (confirm('대화 내용을 초기화하시겠습니까? (서버에 저장된 대화도 함께 초기화됩니다)')) {
+      await onClearChatBackend();
     }
   };
 
